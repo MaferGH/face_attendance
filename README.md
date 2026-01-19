@@ -65,6 +65,14 @@ Luego ejecuta `train_faces.py` para que reconozca al usuario y por último ejecu
 
 <p align="center"><img width="610" height="706" alt="cap3" src="https://github.com/user-attachments/assets/fa80660f-902a-4e7a-80ce-ed19f52772e2" /></p>
 
-###
 > [!IMPORTANT]
-> **Importante:** En este sistema (LBPH), **menor confidence = mejor coincidencia**. El umbral (THRESHOLD) está configurado en 60; si el valor obtenido es menor a esto, el sistema reconoce al usuario.
+>
+> En este algoritmo, **menor valor de `confidence` = mayor parecido**. A diferencia de otros sistemas donde el 100% es lo mejor, aquí el valor representa la "distancia" entre tu cara actual y las fotos guardadas. Si el valor es **0**, la coincidencia es idéntica.
+>
+> Hemos subido el límite de 60 a **105** para garantizar estabilidad bajo tres condiciones críticas:
+>
+> 1. **Reconocimiento a Distancia:** Al alejarte de la cámara, el rostro pierde resolución y detalle. Esto incrementa la "distancia matemática" en el cálculo. Un umbral de 60 fallaría al alejarte, mientras que **105** te da el margen necesario para ser detectada.
+> 
+> 2. **Movimiento y Perfiles:** Al girar la cabeza, inclinarte o cambiar tu peinado (ej. recogerte el pelo), la textura de la imagen cambia. El valor de `confidence` sube porque el patrón no es exacto al de frente, pero el rango de **105** permite que el sistema entienda que sigues siendo tú.
+>
+> 3. **Variaciones de Iluminación:** Los cambios de luz generan "ruido" en los histogramas. El margen de **105** absorbe estas variaciones sin marcarte como desconocida, permitiendo que el sistema funcione en diferentes horas del día.
