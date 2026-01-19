@@ -2,31 +2,30 @@ import cv2
 import numpy as np
 import sqlite3
 import mediapipe as mp
+import os
 from datetime import datetime
 
-MODEL_PATH = "models/lbph_model.yml"
+MODEL_PATH = "models/lbph_model.xml" # DEBE SER .XML
 LABELS_PATH = "models/labels.npy"
 DB_PATH = "attendance.db"
-THRESHOLD = 80 # Un poco más alto ayuda si estás lejos
+THRESHOLD = 105 # Subido a 105 para que te reconozca de lejos y moviéndote
 
+# --- Mediapipe ---
 mp_face_detection = mp.solutions.face_detection
 face_detection = mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5)
 
 # --- DB ---
+if os.path.exists(DB_PATH): os.remove(DB_PATH) # Borramos DB vieja para evitar error de columnas
 conn = sqlite3.connect(DB_PATH)
 c = conn.cursor()
-c.execute("""
-CREATE TABLE IF NOT EXISTS attendance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT,
-    fecha TEXT,
-    hora TEXT
-)
-""")
+c.execute("CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, fecha TEXT, hora TEXT)")
 conn.commit()
 
 # --- Modelo ---
 recognizer = cv2.face.LBPHFaceRecognizer_create()
+if not os.path.exists(MODEL_PATH):
+    print("Error: No existe el modelo .xml. Corre train_faces.py primero.")
+    exit()
 recognizer.read(MODEL_PATH)
 label_map = np.load(LABELS_PATH, allow_pickle=True).item()
 
@@ -37,9 +36,7 @@ def register_attendance(name):
     ahora = datetime.now()
     fecha = ahora.strftime("%d/%m/%Y")
     hora = ahora.strftime("%H:%M:%S")
-    
-    c.execute("INSERT INTO attendance (nombre, fecha, hora) VALUES (?, ?, ?)", 
-              (name, fecha, hora))
+    c.execute("INSERT INTO attendance (nombre, fecha, hora) VALUES (?, ?, ?)", (name, fecha, hora))
     conn.commit()
     print(f"Asistencia: {name} registrada a las {hora} el {fecha}")
 
@@ -47,8 +44,7 @@ while True:
     ret, frame = cap.read()
     if not ret: break
 
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = face_detection.process(rgb_frame)
+    results = face_detection.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     if results.detections:
         for detection in results.detections:
@@ -68,6 +64,7 @@ while True:
 
                 label, confidence = recognizer.predict(gray_face)
 
+                # En LBPH, menos de 100-110 suele ser la misma persona
                 if confidence < THRESHOLD:
                     name = label_map[label]
                     color = (0, 255, 0)
@@ -79,7 +76,7 @@ while True:
                     color = (0, 0, 255)
 
                 cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                cv2.putText(frame, f"{name}", (x, y - 10), 0, 0.7, color, 2)
+                cv2.putText(frame, f"{name} ({int(confidence)})", (x, y - 10), 0, 0.7, color, 2)
 
     cv2.imshow("Sistema de Asistencia", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
