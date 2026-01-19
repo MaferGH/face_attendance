@@ -37,8 +37,8 @@ if len(faces) < 2:
     raise ValueError("No hay suficientes rostros para entrenar.")
 
 recognizer = cv2.face.LBPHFaceRecognizer_create(
-    radius=1,
-    neighbors=8,
+    radius=2,
+    neighbors=10,
     grid_x=8,
     grid_y=8
 )
